@@ -1,0 +1,9 @@
+{
+  "mass": 7300,
+  "wing_area": 122.6,
+  "wing_span": 34.10,
+  "thrust": 147,
+  "pitch": 30,
+  "roll": 40,
+  "efficient_factor": 0.783
+}

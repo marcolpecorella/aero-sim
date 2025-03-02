@@ -1,0 +1,11 @@
+.contextMenu {
+  position: absolute;
+  display: none;
+  width: 110px;
+  height: 110px;
+  --aug-border: 5px;
+  --aug-inset: 5px;
+  --aug-inset-bg: black;
+  --aug-border-bg: rgba(0, 195, 179, 0.23);
+  --aug-tr-height: 30%;
+}
