@@ -1,7 +1,7 @@
 import {Injectable} from '@angular/core';
 
-// @ts-ignore
 declare let Cesium: any;
+
 Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIwMGI3MDBhYi01MThkLTQ3NGUtYWFlMy0yOWViYTczZGFmZTEiLCJpZCI6MjU3MzQwLCJpYXQiOjE3MzIzMDAzMjZ9.H7iCxM7NNsclikVYNDuBs_Xe_jf8cFPtJk9gSQJhRLg"
 @Injectable({
   providedIn: 'root'
