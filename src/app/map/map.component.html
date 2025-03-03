@@ -1,4 +1,90 @@
-<button (click)="spawnPoint()">Spawn Point</button>
-<button (click)="hidePoint()">Hide Point</button>
-<button (click)="showEntity()">Hide Point</button>
 <div id="cesiumContainer" style="width: 100%; height: 100vh;"></div>
+
+<!-- Floating Control Panel -->
+<div class="control-panel">
+  <button class="control-button" (click)="togglePopup()">
+    {{ popupVisible ? 'Hide' : 'Show' }} Points Panel
+  </button>
+
+  <button class="control-button" *ngIf="selectedUuid" (click)="toggleEditMode()">
+    {{ editingMode ? 'Save Changes' : 'Edit Line' }}
+  </button>
+
+  <div class="status-indicator">
+    <span *ngIf="drawingActive" class="status-drawing">Drawing Mode</span>
+    <span *ngIf="editingMode" class="status-editing">Editing Mode</span>
+    <span *ngIf="selectedUuid && !editingMode" class="status-selected">Line Selected</span>
+  </div>
+</div>
+
+<!-- Draggable Popup Window for Active Line Points -->
+<div class="popup-window" *ngIf="popupVisible && (drawingActive || editingMode)" cdkDrag>
+  <div class="popup-header" cdkDragHandle>
+    <span>{{ editingMode ? 'Edit Line Points' : 'Active Line Points' }}</span>
+    <button class="close-button" (click)="togglePopup()">X</button>
+  </div>
+
+  <div class="popup-content">
+    <ul class="points-list">
+      <li *ngFor="let pt of points; let i = index" class="point-item">
+        <div class="point-info">
+          <span class="point-number">Point {{ i + 1 }}</span>
+          <div class="coordinates">
+            <div>Lat: {{ getLatitude(pt) | number:'1.4-4' }}°</div>
+            <div>Lon: {{ getLongitude(pt) | number:'1.4-4' }}°</div>
+            <div>Height: {{ getHeight(pt) / 0.3048 | number:'1.0-0' }} ft</div>
+          </div>
+        </div>
+        <div class="point-actions">
+          <button class="action-button edit-button" (click)="promptUpdateHeight(i)" title="Update Height">
+            <span class="action-icon">↕</span>
+          </button>
+          <button class="action-button delete-button" (click)="deletePoint(i)" title="Delete Point">
+            <span class="action-icon">×</span>
+          </button>
+        </div>
+      </li>
+    </ul>
+
+    <div *ngIf="points.length === 0" class="empty-message">
+      Click on the map to add points
+    </div>
+
+    <div class="info-box" *ngIf="drawingActive && points.length > 0">
+      <p><strong>Instructions:</strong></p>
+      <ul class="instructions-list">
+        <li>Left-click to add more points</li>
+        <li>Right-click to finalize this line</li>
+      </ul>
+    </div>
+
+    <div class="info-box" *ngIf="editingMode">
+      <p><strong>Instructions:</strong></p>
+      <ul class="instructions-list">
+        <li>Left-click to add more points</li>
+        <li>Right-click to save changes</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Entity Information Panel -->
+<div class="entity-info-panel" *ngIf="selectedUuid && !editingMode && popupVisible" cdkDrag>
+  <div class="popup-header" cdkDragHandle>
+    <span>Selected Line</span>
+    <button class="close-button" (click)="togglePopup()">X</button>
+  </div>
+
+  <div class="popup-content">
+    <p class="entity-id">ID: {{ selectedUuid }}</p>
+    <p>Points: {{ points.length }}</p>
+
+    <div class="action-buttons">
+      <button class="action-button primary" (click)="toggleEditMode()">Edit Line</button>
+    </div>
+
+    <p class="help-text">
+      Right-click to deselect this line
+    </p>
+  </div>
+</div>

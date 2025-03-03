@@ -1,11 +1,88 @@
-.contextMenu {
+/* Toggle button styling */
+.toggle-button {
   position: absolute;
-  display: none;
-  width: 110px;
-  height: 110px;
-  --aug-border: 5px;
-  --aug-inset: 5px;
-  --aug-inset-bg: black;
-  --aug-border-bg: rgba(0, 195, 179, 0.23);
-  --aug-tr-height: 30%;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toggle-button:hover {
+  background: #1565c0;
+}
+
+/* Popup window styling */
+.popup-window {
+  position: absolute;
+  top: 50px;
+  right: 20px;
+  width: 300px;
+  max-height: 80vh;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 1000;
+  font-family: 'Roboto', sans-serif;
+}
+
+.popup-header {
+  background: #1976d2;
+  color: #fff;
+  padding: 10px;
+  cursor: move;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.popup-content {
+  padding: 10px;
+  overflow-y: auto;
+  max-height: calc(80vh - 50px);
+}
+
+.popup-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.popup-content li {
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 6px;
+}
+
+.popup-buttons button {
+  margin-right: 6px;
+  background: #1976d2;
+  border: none;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.popup-buttons button:hover {
+  background: #1565c0;
+}
+
+.info {
+  font-size: 12px;
+  color: #555;
+  margin-top: 10px;
 }

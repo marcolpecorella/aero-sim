@@ -1,174 +1,179 @@
-import {AfterViewInit, Component, OnDestroy, OnInit} from '@angular/core';
-
-import {CesiumService} from '../core/cesium.service';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import {
+  Viewer,
+  Cartesian3,
   Cartographic,
-  Math as CesiumMath,
   Ellipsoid,
+  CatmullRomSpline,
+  Math as CesiumMath,
+  Color,
+  VerticalOrigin,
   ScreenSpaceEventHandler,
-  ScreenSpaceEventType,
-  Viewer, Entity, ITwinData
+  ScreenSpaceEventType, Cartesian2
 } from 'cesium';
-import {DataService} from '../core/data-service.service';
-import {CesiumEntity, PointEntity} from '../interfaces/entity';
-import {EntityService} from '../core/entity.service';
+import { CesiumService } from '../core/cesium.service';
 
 @Component({
   selector: 'app-map',
-  templateUrl: './map.component.html',
-  styleUrls: ['./map.component.css']
+  template: `
+    <div id="cesiumContainer" style="width: 100%; height: 100vh;"></div>
+    <div style="position: absolute; top: 10px; left: 10px; background: #fff; padding: 8px;">
+      <p>Left‑click to add a control point.</p>
+      <p>Click and drag a marker to reposition a control point.</p>
+    </div>
+  `,
+  styles: [],
+  standalone: true
 })
 export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
-  protected viewer: Viewer | any = null;
-  private entityService: EntityService = new EntityService();
-  constructor(public cesium: CesiumService, private dataService: DataService) {
-  }
+  protected viewer!: Viewer;
+  // Array of control points (each is a Cartesian3)
+  points: Cartesian3[] = [];
+  // The polyline entity that displays the computed spline.
+  polylineEntity: any;
+  // Marker entities for each control point.
+  markers: any[] = [];
+  // Variables to track dragging of a marker.
+  dragging = false;
+  dragIndex = -1;
+  // Screen space event handler.
+  handler!: ScreenSpaceEventHandler;
 
-  fixes_id : string[] = []
-  sectors_id : string[] = []
+  constructor(private cesium: CesiumService) {}
 
-  ngOnInit() {
-    this.cesium.initScene("cesiumContainer");
+  ngOnInit(): void {
+    // Initialize the Cesium scene via your service.
+    this.cesium.initScene('cesiumContainer');
     this.viewer = this.cesium.viewer;
   }
 
-  ngAfterViewInit() {
-    const handler = new ScreenSpaceEventHandler(this.viewer.canvas);
-    handler.setInputAction((movement: { position: { x: number; y: number } }) => {
-      this.closeContextMenu(movement);
-      this.sendPosition(movement);
+  ngAfterViewInit(): void {
+    this.handler = new ScreenSpaceEventHandler(this.viewer.canvas);
+
+    // LEFT_CLICK: Add a new control point (if not dragging)
+    this.handler.setInputAction((movement: any) => {
+      if (this.dragging) { return; }
+      this.addControlPoint(movement.position);
     }, ScreenSpaceEventType.LEFT_CLICK);
-    handler.setInputAction((movement: { position: { x: number; y: number } }) => {
-      this.openContextMenu(movement);
-    }, ScreenSpaceEventType.RIGHT_CLICK);
 
-    this.dataService.getFixes().subscribe(
-      data => this.drawFixes(data),
-      error => console.error('HTTP error:', error)
-    );
+    // LEFT_DOWN: Check if a control point marker is clicked to start dragging.
+    this.handler.setInputAction((movement: any) => {
+      const picked = this.viewer.scene.pick(movement.position);
+      if (picked && picked.id && (picked.id as any).isControlPoint === true) {
+        this.dragging = true;
+        this.dragIndex = (picked.id as any).markerIndex;
+      }
+    }, ScreenSpaceEventType.LEFT_DOWN);
 
-    this.dataService.getSectors().subscribe(
-      data => this.drawSectors(data),
-      error => console.error('HTTP error:', error)
-    )
+    // MOUSE_MOVE: If dragging, update the corresponding control point and marker in real time.
+    this.handler.setInputAction((movement: any) => {
+      if (this.dragging && this.dragIndex >= 0) {
+        const newPos = this.viewer.camera.pickEllipsoid(movement.endPosition, Ellipsoid.WGS84);
+        if (newPos) {
+          // Preserve the current height.
+          const currentCarto = Cartographic.fromCartesian(this.points[this.dragIndex]);
+          const newCarto = Cartographic.fromCartesian(newPos);
+          newCarto.height = currentCarto.height;
+          const updatedPoint = Cartesian3.fromRadians(
+            newCarto.longitude,
+            newCarto.latitude,
+            newCarto.height
+          );
+          // Update control point and marker.
+          this.points[this.dragIndex] = updatedPoint;
+          this.markers[this.dragIndex].position = updatedPoint;
+          // Update the polyline.
+          this.updatePolyline();
+        }
+      }
+    }, ScreenSpaceEventType.MOUSE_MOVE);
+
+    // LEFT_UP: End dragging.
+    this.handler.setInputAction(() => {
+      if (this.dragging) {
+        this.dragging = false;
+        this.dragIndex = -1;
+      }
+    }, ScreenSpaceEventType.LEFT_UP);
   }
 
-  drawFixes(data: any) {
-    console.log('drawing fixes function')
-
-    for (let i = 0; i < data.length; i++) {
-      console.log('drawing fix {}', i)
-      const e : PointEntity = {
-        type: 'point',
-        longitude: data[i]['lng'],
-        latitude: data[i]['lat'],
-        pixelSize: 2,
-        label: data[i]['fixlongcode'],
-        id: data[i]['fixlongcode'],
-        };
-
-      this.fixes_id.push(data[i].fixlongcode);
-      this.entityService.spawnEntity(this.viewer, e);
-    }
-  }
-
-  drawSectors(data: any) {
-    console.log(data);
-    /*
-
-    for (let i = 0; i < data.length; i++) {
-      console.log('drawing fix {}', i)
-      const e : PointEntity = {
-        type: 'point',
-        longitude: data[i]['lng'],
-        latitude: data[i]['lat'],
-        pixelSize: 2,
-        label: data[i]['fixlongcode'],
-        id: data[i]['fixlongcode'],
-      };
-
-      this.fixes_id.push(data[i].fixlongcode);
-      this.entityService.spawnEntity(this.viewer, e);
-    }
-     */
-  }
-
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     if (this.viewer) {
       this.viewer.destroy();
     }
   }
 
-  sendPosition(movement: { position: { x: number; y: number } }) {
-    const pickedPosition = this.viewer.camera.pickEllipsoid(movement.position, Ellipsoid.WGS84);
-    if (pickedPosition) {
-      const cartographic = Cartographic.fromCartesian(pickedPosition);
-      const latitude = CesiumMath.toDegrees(cartographic.latitude);
-      const longitude = CesiumMath.toDegrees(cartographic.longitude);
+  // Adds a control point at the given screen position.
+  addControlPoint(screenPos: { x: number; y: number }): void {
+    if (screenPos instanceof Cartesian2) {
+      const pickedPos = this.viewer.camera.pickEllipsoid(screenPos, Ellipsoid.WGS84);
+    if (pickedPos) {
+      // Use a default height (e.g., 1000 feet converted to meters)
+      const defaultHeightMeters = 1000 * 0.3048;
+      let carto = Cartographic.fromCartesian(pickedPos);
+      carto.height = defaultHeightMeters;
+      const point = Cartesian3.fromRadians(carto.longitude, carto.latitude, carto.height);
+      this.points.push(point);
+      // Recalculate polyline and update markers.
+      this.updatePolyline();
+      this.updateControlPointMarkers();
+    }
+    }
+  }
 
-      const data = `${latitude},${longitude}`;
-
-      this.dataService.postData({ message: data }).subscribe(
-        response => console.log('Server response:', response),
-        error => console.error('Error sending data:', error)
-      );
+  // Compute a smooth polyline (using Catmull-Rom spline) and update the entity.
+  updatePolyline(): void {
+    if (this.points.length < 2) return;
+    const times = this.points.map((_, i) => i);
+    const spline = new CatmullRomSpline({ points: this.points, times });
+    const sampleCount = 100;
+    const sampledPositions: Cartesian3[] = [];
+    for (let i = 0; i <= sampleCount; i++) {
+      const t = (this.points.length - 1) * (i / sampleCount);
+      sampledPositions.push(spline.evaluate(t));
+    }
+    if (this.polylineEntity) {
+      this.polylineEntity.polyline.positions = sampledPositions;
     } else {
-      console.log('No position picked.');
+      this.polylineEntity = this.viewer.entities.add({
+        polyline: {
+          positions: sampledPositions,
+          width: 5,
+          material: Color.YELLOW
+        }
+      });
     }
   }
 
-  openContextMenu(click: {"position": any}) {
-    const position = click.position;
-    const menu = document.getElementById('contextMenu');
-
-    if (!menu) {
-      return;
+  // Create or update billboard markers for each control point.
+  updateControlPointMarkers(): void {
+    // Loop through control points.
+    for (let i = 0; i < this.points.length; i++) {
+      if (this.markers[i]) {
+        // Update marker position.
+        this.markers[i].position = this.points[i];
+      } else {
+        // Create a new marker.
+        const marker = this.viewer.entities.add({
+          position: this.points[i],
+          billboard: {
+            image: 'assets/marker.png', // Update with your marker image path.
+            scale: 0.5,
+            verticalOrigin: VerticalOrigin.BOTTOM
+          }
+        });
+        // Set custom properties after creation.
+        (marker as any).isControlPoint = true;
+        (marker as any).markerIndex = i;
+        this.markers.push(marker);
+      }
     }
-
-    menu.style.display = 'block';
-    menu.style.left = '0px';
-    menu.style.top = '0px';
-
-    const menuWidth = menu.offsetWidth;
-    const menuHeight = menu.offsetHeight;
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-
-    let left = position.x;
-    let top = position.y;
-
-    if (position.x + menuWidth > windowWidth) {
-      left = position.x - menuWidth;
-    }
-
-    if (position.y + menuHeight > windowHeight) {
-      top = position.y - menuHeight;
-    }
-
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
-  }
-
-  closeContextMenu(event: any) {
-    const menu = document.getElementById('contextMenu');
-    if (menu && !menu.contains(event.target)) {
-      menu.style.display = 'none';
-    }
-  }
-
-  spawnPoint() {
-    this.dataService.getData();
-  }
-
-  hidePoint() {
-    for (let i = 0; i < this.fixes_id.length; i++) {
-      this.entityService.hideEntity(this.viewer, this.fixes_id[i]);
-    }
-  }
-
-  showEntity() {
-    for (let i = 0; i < this.fixes_id.length; i++) {
-      this.entityService.showEntity(this.viewer, this.fixes_id[i]);
+    // Remove extra markers if points were removed.
+    while (this.markers.length > this.points.length) {
+      const marker = this.markers.pop();
+      if (marker) {
+        this.viewer.entities.remove(marker);
+      }
     }
   }
 }
