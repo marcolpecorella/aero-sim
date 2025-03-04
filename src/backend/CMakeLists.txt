@@ -22,6 +22,8 @@ set(SOURCES
         core/PointMath.h
         core/Airplane.cpp
         core/Airplane.h
+        core/Math.h
+        core/Math.cpp
 )
 
 add_executable(communication_handler ${SOURCES})

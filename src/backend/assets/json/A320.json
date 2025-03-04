@@ -5,5 +5,11 @@
   "thrust": 147,
   "pitch": 30,
   "roll": 40,
-  "efficient_factor": 0.783
+  "efficient_factor": 0.783,
+  "cl0": 0.23,
+  "cl_alpha":  5.7,
+  "alpha_stall": 15.0,
+  "cl_max": 1.8,
+  "alpha_zero_lift": -2.5,
+  "flap_cl_inc": 0.9
 }

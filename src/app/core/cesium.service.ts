@@ -16,7 +16,7 @@ export class CesiumService {
       skyAtmosphere: new Cesium.SkyAtmosphere(),
       sceneModePicker: false,
       baseLayerPicker: false,
-      terrain: Cesium.Terrain.fromWorldTerrain(),
+      //terrain: Cesium.Terrain.fromWorldTerrain(),
       requestVertexNormals: true,
       animation: false,
       timeline: false,

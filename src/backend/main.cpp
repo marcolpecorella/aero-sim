@@ -2,8 +2,10 @@
 #include <string>
 #include <csignal>
 
+#include "core/Airplane.h"
 #include "module/CommunicationHandler.h"
 
+/*
 static CommunicationHandler* g_handler = nullptr;
 
 void signalHandler(int signal) {
@@ -35,5 +37,32 @@ int main() {
     }
 
     std::cout << "Server stopped." << std::endl;
+    return 0;
+}
+*/
+
+
+
+int main() {
+    Airplane plane("A320");
+    plane.pitch = 0.0;
+    plane.roll = 0.0;
+    plane.yaw = 0.0;
+    plane.position = Vector3(0.0, 0.0, 30000.0);
+    plane.speed = Vector3(130.0, 0.0, 0.0);
+    plane.calculateVelocity();
+    std::cout << "Initial position: "
+              << "x = " << plane.position.x << ", "
+              << "y = " << plane.position.y << ", "
+              << "z = " << plane.position.z << std::endl;
+
+    for (int i = 0; i < 50; ++i) {
+        plane.step();
+        std::cout << "Step " << i+1 << " position: "
+                  << "x = " << plane.position.x << ", "
+                  << "y = " << plane.position.y << ", "
+                  << "z = " << plane.position.z << std::endl;
+    }
+
     return 0;
 }
